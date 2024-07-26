@@ -107,3 +107,5 @@ sftp-config.json
 
 # data
 *.csv
+*.npy
+*.model
