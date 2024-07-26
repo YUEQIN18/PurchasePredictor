@@ -5,7 +5,9 @@ import os
 import pprint as pp
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+
+tf.disable_v2_behavior()
 
 from tf_utils import shape
 
@@ -98,7 +100,7 @@ class TFBaseModel(object):
 
         self.graph = self.build_graph()
         self.session = tf.Session(graph=self.graph)
-        print 'built graph'
+        print('built graph')
 
     def calculate_loss(self):
         raise NotImplementedError('subclass must implement this')
@@ -125,7 +127,7 @@ class TFBaseModel(object):
             while step < self.num_training_steps:
 
                 # validation evaluation
-                val_batch_df = val_generator.next()
+                val_batch_df = next(val_generator)
                 val_feed_dict = {
                     getattr(self, placeholder_name, None): data
                     for placeholder_name, data in val_batch_df if hasattr(self, placeholder_name)
@@ -144,7 +146,7 @@ class TFBaseModel(object):
                 val_loss_history.append(val_loss)
 
                 # train step
-                train_batch_df = train_generator.next()
+                train_batch_df = next(train_generator)
                 train_feed_dict = {
                     getattr(self, placeholder_name, None): data
                     for placeholder_name, data in train_batch_df if hasattr(self, placeholder_name)
@@ -216,7 +218,7 @@ class TFBaseModel(object):
             test_generator = self.reader.test_batch_generator(chunk_size)
             for i, test_batch_df in enumerate(test_generator):
                 if i % 100 == 0:
-                    print i*chunk_size
+                    print(i*chunk_size)
 
                 test_feed_dict = {
                     getattr(self, placeholder_name, None): data
@@ -281,7 +283,6 @@ class TFBaseModel(object):
         date_str = datetime.now().strftime('%Y-%m-%d_%H-%M')
         log_file = 'log_{}.txt'.format(date_str)
 
-        reload(logging)  # bad
         logging.basicConfig(
             filename=os.path.join(log_dir, log_file),
             level=logging.INFO,

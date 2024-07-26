@@ -2,7 +2,9 @@ import os
 import sys
 
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+
+tf.disable_v2_behavior()
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -19,8 +21,8 @@ class DataReader(object):
         df = DataFrame(columns=data_cols, data=data)
         self.train_df, self.val_df = df.train_test_split(train_size=0.9)
 
-        print 'train size', len(self.train_df)
-        print 'val size', len(self.val_df)
+        print('train size', len(self.train_df))
+        print('val size', len(self.val_df))
 
         self.num_users = df['i'].max() + 1
         self.num_products = df['j'].max() + 1
@@ -105,7 +107,6 @@ if __name__ == '__main__':
         log_interval=200,
         num_validation_batches=1,
         loss_averaging_window=200,
-
     )
     nnmf.fit()
     nnmf.restore()
