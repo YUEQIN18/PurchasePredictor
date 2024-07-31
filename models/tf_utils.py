@@ -1,4 +1,6 @@
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
+
+tf.disable_v2_behavior()
 
 
 def lstm_layer(inputs, lengths, state_size, keep_prob=1.0, scope='lstm-layer', reuse=False, return_final_state=False):
@@ -17,12 +19,10 @@ def lstm_layer(inputs, lengths, state_size, keep_prob=1.0, scope='lstm-layer', r
 
     """
     with tf.variable_scope(scope, reuse=reuse):
-        cell_fw = tf.contrib.rnn.DropoutWrapper(
-            tf.contrib.rnn.LSTMCell(
-                state_size,
-                reuse=reuse
-            ),
-            output_keep_prob=keep_prob
+        cell_fw = tf.keras.layers.LSTMCell(
+            units=state_size,
+            dropout=1 - keep_prob,
+            recurrent_dropout=0,
         )
         outputs, output_state = tf.nn.dynamic_rnn(
             inputs=inputs,
@@ -54,22 +54,24 @@ def temporal_convolution_layer(inputs, output_units, convolution_width, causal=F
     """
     with tf.variable_scope(scope, reuse=reuse):
         if causal:
-            shift = (convolution_width / 2) + (int(dilation_rate[0] - 1) / 2)
+            shift = int((convolution_width / 2) + (int(dilation_rate[0] - 1) / 2))  # 将计算结果转换为整数
             pad = tf.zeros([tf.shape(inputs)[0], shift, inputs.shape.as_list()[2]])
             inputs = tf.concat([pad, inputs], axis=1)
 
-        W = tf.get_variable(
+        initializer = tf.keras.initializers.VarianceScaling()
+
+        W = tf.Variable(
+            initial_value=initializer(shape=[convolution_width, inputs.shape[2], output_units]),
             name='weights',
-            initializer=tf.contrib.layers.variance_scaling_initializer(),
-            shape=[convolution_width, shape(inputs, 2), output_units]
+            trainable=True  # 默认可训练
         )
 
         z = tf.nn.convolution(inputs, W, padding='SAME', dilation_rate=dilation_rate)
         if bias:
-            b = tf.get_variable(
+            b = tf.Variable(
+                initial_value=tf.zeros(shape=[output_units]),
                 name='biases',
-                initializer=tf.constant_initializer(),
-                shape=[output_units]
+                trainable=True  #默认可训练
             )
             z = z + b
         z = activation(z) if activation else z
@@ -95,17 +97,19 @@ def time_distributed_dense_layer(inputs, output_units, bias=True, activation=Non
 
     """
     with tf.variable_scope(scope, reuse=reuse):
-        W = tf.get_variable(
+        initializer = tf.keras.initializers.VarianceScaling()
+        # 创建权重变量
+        W = tf.Variable(
+            initial_value=initializer(shape=[inputs.shape.as_list()[-1], output_units]),
             name='weights',
-            initializer=tf.contrib.layers.variance_scaling_initializer(),
-            shape=[shape(inputs, -1), output_units]
+            trainable=True  # 可根据需要设置是否可训练
         )
         z = tf.einsum('ijk,kl->ijl', inputs, W)
         if bias:
-            b = tf.get_variable(
+            b = tf.Variable(
+                initial_value=tf.zeros(shape=[output_units]),
                 name='biases',
-                initializer=tf.constant_initializer(),
-                shape=[output_units]
+                trainable=False  # 将 trainable 设置为 False
             )
             z = z + b
 
@@ -134,17 +138,19 @@ def dense_layer(inputs, output_units, bias=True, activation=None, batch_norm=Non
 
     """
     with tf.variable_scope(scope, reuse=reuse):
-        W = tf.get_variable(
+        initializer = tf.keras.initializers.VarianceScaling()
+        # 创建权重变量
+        W = tf.Variable(
+            initial_value=initializer(shape=[inputs.shape.as_list()[-1], output_units]),
             name='weights',
-            initializer=tf.contrib.layers.variance_scaling_initializer(),
-            shape=[shape(inputs, -1), output_units]
+            trainable=True  # 可根据需要设置是否可训练
         )
         z = tf.matmul(inputs, W)
         if bias:
-            b = tf.get_variable(
+            b = tf.Variable(
+                initial_value=tf.zeros(shape=[output_units]),
                 name='biases',
-                initializer=tf.constant_initializer(),
-                shape=[output_units]
+                trainable=False  # 将 trainable 设置为 False
             )
             z = z + b
 
